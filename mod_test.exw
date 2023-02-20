@@ -1,0 +1,37 @@
+include gui/tin/tinewg.exw
+include eumodbus.e
+include std\machine.e
+
+atom buffer=allocate(MAX_PDU)
+constant IpEdit="SysIPAddress32"
+
+atom ctx=modbus:New_Tcp("127.0.0.1")
+--atom ctx=modbus:New_Rtu("COM4:",9600,'N',8,1)
+?ctx
+Set_Debug(ctx,1)
+--Set_Timeout(ctx,,250)
+modbus:Set_Slave(ctx,1)
+--Get_Byte_Timeout(ctx)
+--Set_Timeout(ctx,0,750)
+--Get_Byte_Timeout(ctx)
+--Set_Debug(ctx,1)
+?modbus:Connect(ctx)
+--?Report_Slave_Id(ctx,buffer)
+--Modbus_Report_Slave_Id(ctx,buffer)
+--Modbus_Raw_Send(ctx,{3,03,0,1,0,1})
+--?Modbus_Raw_Receive(ctx)
+--getc(0)
+
+?modbus:Read_Register32s(ctx,000)
+
+modbus:Flush(ctx)
+modbus:Close(ctx)
+modbus:Free(ctx)
+
+--?Scan_Com_Ports()
+
+--?Scan_Rtu_Station("COM4:",1,5)
+getc(0)
+
+
+free(buffer)

@@ -1,0 +1,149 @@
+include gui/tin/tinewg.exw
+include std/convert.e
+include eumodbus.e
+
+type byte(object x)
+    return (x>-1) and (x<256)
+end type
+
+sequence read_modus={"16bit unsigned",
+                     "16bit Signed",
+                     "32bit unsigned",
+                     "32bit signed",
+                     "Float32_A",
+                     "Float32_B",
+                     "Float32_C",
+                     "Float32_D"
+                     }
+constant bullshit=#DEADBEEF
+--
+ShowFlag=False
+Window("MBT (Modbus Tester)",-1,-1,400,310)
+ShowFlag=True
+atom status=Control(StatusBar,"Initialisierung beendet")
+
+
+WindowType=NoSysWin
+atom splash=Window("MBT Initialisierung")
+atom splashtext=Control(Label,"Bitte warten es dauert noch! Suche die Com Ports.",0,70,385,20)
+
+object comports=Scan_Com_Ports()
+
+
+SetParentWindow(WinHwnd)
+atom list_proto=Control(DropDown,"",10,10,130,20)
+ListAdd(list_proto,{"Modbus RTU","Modbus TCP/IP"})
+AddToolTip(list_proto,"Modbus Protokoll auswählen.")
+atom label_proto=Control(Label,"Protokoll Auswahl",150,10,120,20)
+ListSeek(list_proto,0)
+LabelAdjL(label_proto)
+
+
+atom group_rtu=Control(Group,"RTU Parameter",5,35,385,70)
+
+SetParentWindow(group_rtu)
+atom list_com=Control(DropDown,"",5,40,80,20)
+AddToolTip(list_com,"Hier Com Port auswählen.")
+atom button_com=Control(Button,"Com Ports",5,15,80,25)
+AddToolTip(button_com,"Hier klicken um verfügbare Com Ports zu suchen.")
+atom list_slaves=Control(DropDown,"",100,40,30,20)
+AddToolTip(list_slaves,"Hier Slave auswählen.")
+atom button_slaves=Control(Button,"Slave ID",100,15,80,25)
+AddToolTip(button_slaves,"Hier klicken um verfügbare Slave zu suchen.")
+atom edit_slaves=Control(Edit,"",150,40,30,20)
+AddToolTip(edit_slaves,"Hier kann die Slave Id direkt eingegeben werden (1-247).")
+--SetEnable(group_rtu,False)
+if length(comports) then
+        ListAdd(list_com,comports)
+end if
+ListSeek(list_com,0)
+
+SetParentWindow(WinHwnd)
+
+atom group_tcp=Control(Group,"TCP/IP Parameter",5,115,385,70)
+SetParentWindow(group_tcp)
+atom edit_ip1=Control(Edit,"127",5,15,30,20)
+atom edit_ip2=Control(Edit,"0",40,15,30,20)
+atom edit_ip3=Control(Edit,"0",75,15,30,20)
+atom edit_ip4=Control(Edit,"1",110,15,30,20)
+AddToolTip(edit_ip1,"Hier IP1 Adresse eingeben (127.0.0.1 ist localhost!).")
+AddToolTip(edit_ip2,"Hier IP2 Adresse eingeben (127.0.0.1 ist localhost!).")
+AddToolTip(edit_ip3,"Hier IP3 Adresse eingeben (127.0.0.1 ist localhost!).")
+AddToolTip(edit_ip4,"Hier IP4 Adresse eingeben (127.0.0.1 ist localhost!).")
+SetParentWindow(WinHwnd)
+
+
+atom group_register=Control(Group,"Register lesen",5,190,385,70)
+SetParentWindow(group_register)
+atom label_adress=Control(Label,"Modbus Adresse",5,15,80,25)
+atom edit_adress=Control(Edit,"#1000",5,40,80,20)
+atom list_modus=Control(List,"",100,10,100,50)
+atom label_result=Control(Label,"Inhalt Adresse",215,15,80,25)
+atom edit_result=Control(Edit,"#DEADBEEF",215,40,80,20)
+atom check_swap=Control(Check,"Swap",305,40,60,25)
+atom button_read=Control(Button,"Lesen",305,15,60,20)
+ListAdd(list_modus,read_modus)
+ListSeek(list_modus,3)
+
+SetVisible(WinHwnd,True)
+ForceForeground(WinHwnd)
+SetVisible(splash,False)
+
+function get_integer(atom handle)
+sequence text=GetText(handle)
+object result
+    result=to_number(text,1)
+    if result[2]>0 then
+        result=bullshit
+    else
+        result=to_integer(result[1])
+    end if
+    return result
+end function
+
+function get_ip()
+object result
+atom ip1,ip2,ip3,ip4
+    ip1=get_integer(edit_ip1)
+    if not byte(ip1) then
+        InfoMsg("Falsche IP1.","Fehler in IP Adresse.")
+        result=0
+        SetText(edit_ip1,"XXX")
+        return result
+    end if
+    ip2=get_integer(edit_ip2)
+    if not byte(ip2) then
+        InfoMsg("Falsche IP2.","Fehler in IP Adresse.")
+        SetText(edit_ip2,"XXX")
+        result=0
+        return result
+    end if
+    ip3=get_integer(edit_ip3)
+    if not byte(ip3) then
+        InfoMsg("Falsche IP3.","Fehler in IP Adresse.")
+        SetText(edit_ip3,"XXX")
+        result=0
+        return result
+    end if
+    ip4=get_integer(edit_ip4)
+    if not byte(ip4) then
+        InfoMsg("Falsche IP4.","Fehler in IP Adresse.")
+        SetText(edit_ip4,"XXX")
+        result=0
+        return result
+    end if
+    result=GetText(edit_ip1)&"."&GetText(edit_ip2)&"."&GetText(edit_ip3)&"."&GetText(edit_ip4)
+    return result
+end function
+
+procedure readregister()
+atom adress=get_integer(edit_adress)
+if equal(adress,bullshit) then
+    InfoMsg("Bitte gültige Modbus Adresse eingeben!","Fehlerhafte Modbus Adresse.")
+    SetText(edit_adress,"0")
+    return
+end if
+end procedure
+SetHandler(button_read,Click,routine_id("readregister"))
+
+WinMain()
